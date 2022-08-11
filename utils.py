@@ -105,6 +105,8 @@ def partition_data(dataset, datadir, logdir, partition, n_parties, beta=0.4):
 
 
     elif partition == "noniid-labeldir" or partition == "noniid":
+        np.random.seed(749)
+        torch.manual_seed(749)
         min_size = 0
         min_require_size = 10
         K = 10

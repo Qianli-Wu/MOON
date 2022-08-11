@@ -22,9 +22,9 @@ def get_args():
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='noniid', help='the data partitioning strategy')
     parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate (default: 0.1)')
+    parser.add_argument('--lr', type=float, default=0.1, help='learning rate (default: 0.1)')
     parser.add_argument('--epochs', type=int, default=5, help='number of local epochs')
-    parser.add_argument('--n_parties', type=int, default=10, help='number of workers in a distributed cluster')
+    parser.add_argument('--n_parties', type=int, default=100, help='number of workers in a distributed cluster')
     parser.add_argument('--alg', type=str, default='moon',
                         help='communication strategy: fedavg/fedprox')
     parser.add_argument('--comm_round', type=int, default=500, help='number of maximum communication roun')
@@ -45,7 +45,7 @@ def get_args():
     parser.add_argument('--local_max_epoch', type=int, default=100, help='the number of epoch for local optimal training')
     parser.add_argument('--model_buffer_size', type=int, default=1, help='store how many previous models for contrastive loss')
     parser.add_argument('--pool_option', type=str, default='FIFO', help='FIFO or BOX')
-    parser.add_argument('--sample_fraction', type=float, default=1.0, help='how many clients are sampled in each round')
+    parser.add_argument('--sample_fraction', type=float, default=0.1, help='how many clients are sampled in each round')
     parser.add_argument('--load_model_file', type=str, default=None, help='the model to load as global model')
     parser.add_argument('--load_pool_file', type=str, default=None, help='the old model pool path to load')
     parser.add_argument('--load_model_round', type=int, default=None, help='how many rounds have executed for the loaded model')
@@ -85,7 +85,7 @@ def init_nets(net_configs, n_parties, args, device='cpu'):
                 net = net.cuda()
             nets[net_i] = net
     else:
-        for net_i in range(n_parties):
+        for net_i in range(n_parties):  #10
             if args.use_project_head:
                 net = ModelFedCon(args.model, args.out_dim, n_classes, net_configs)
             else:
