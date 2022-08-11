@@ -1,2 +1,5 @@
 .idea/*
 .model*
+.DS_Store
+data/*
+logs/*
