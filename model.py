@@ -146,10 +146,11 @@ class FCBlockVGG(nn.Module):
 class SimpleCNN_header(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim=10):
         super(SimpleCNN_header, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.conv1 = nn.Conv2d(3, 32, 3)
         self.relu = nn.ReLU()
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.conv2 = nn.Conv2d(32, 64, 3)
+        self.conv3 = nn.Conv2d(64, 64, 3)
 
         # for now, we hard coded this network
         # i.e. we fix the number of hidden layers i.e. 2 layers
@@ -161,7 +162,8 @@ class SimpleCNN_header(nn.Module):
 
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 5 * 5)
+        x = self.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
 
         x = self.relu(self.fc1(x))
         x = self.relu(self.fc2(x))
@@ -297,26 +299,23 @@ class SimpleCNNContainer(nn.Module):
         return x
 
 
-############## LeNet for MNIST ###################
+############## LeNet ###################
 class LeNet(nn.Module):
     def __init__(self):
         super(LeNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4 * 4 * 50, 500)
-        self.fc2 = nn.Linear(500, 10)
-        self.ceriation = nn.CrossEntropyLoss()
+        self.conv1 = nn.Conv2d(3, 6, 5, 1)
+        self.conv2 = nn.Conv2d(6, 16, 5, 1)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(5 * 5 * 16, 120)
+        self.fc2 = nn.Linear(120, 84)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(x)
-        x = x.view(-1, 4 * 4 * 50)
-        x = self.fc1(x)
-        x = self.fc2(x)
+        x = self.pool(self.relu(self.conv1(x)))
+        x = self.pool(self.relu(self.conv2(x)))
+        x = torch.flatten(x, 1)
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
         return x
 
 
@@ -342,8 +341,47 @@ class LeNetContainer(nn.Module):
         return x
 
 
+############## VGG ####################
+class VGG(nn.Module):
+    def __init__(self, in_channel=3, num_ftrs=84, config=None):
+        super(VGG, self).__init__()
+        self.in_channel = in_channel
 
-### Moderate size of CNN for CIFAR-10 dataset
+        if config is None:
+            self.config = [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
+        else:
+            self.config = config
+
+        self.features = self._make_feature_layers()
+        self.classifier = nn.Sequential(
+            nn.Linear(self.config[-2], 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, num_ftrs)
+        )
+
+    def _make_feature_layers(self):
+        layers = []
+        in_channels = self.in_channel
+        for param in self.config:
+            if param == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2))
+            else:
+                layers.extend([nn.Conv2d(in_channels, param, kernel_size=3, padding=1),
+                               nn.ReLU(inplace=True)])
+                in_channels = param
+
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+
+# Moderate size of CNN for CIFAR-10 dataset
 class ModerateCNN(nn.Module):
     def __init__(self, output_dim=10):
         super(ModerateCNN, self).__init__()
@@ -550,10 +588,16 @@ class ModelFedCon(nn.Module):
             self.features = MLP_header()
             num_ftrs = 512
         elif base_model == 'simple-cnn':
-            self.features = SimpleCNN_header(input_dim=(16 * 5 * 5), hidden_dims=[120, 84], output_dim=n_classes)
+            self.features = SimpleCNN_header(input_dim=(64 * 4 * 4), hidden_dims=[64, 84], output_dim=n_classes)
             num_ftrs = 84
         elif base_model == 'simple-cnn-mnist':
             self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
+            num_ftrs = 84
+        elif base_model == 'lenet':
+            self.features = LeNet()
+            num_ftrs = 84
+        elif base_model == 'vgg':
+            self.features = VGG()
             num_ftrs = 84
 
         #summary(self.features.to('cuda:0'), (3,32,32))
