@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import random
 from sklearn.metrics import confusion_matrix
+from torchvision import datasets
 
 from model import *
 from datasets import CIFAR10_truncated, CIFAR100_truncated, ImageFolder_custom
@@ -24,7 +25,19 @@ def mkdirs(dirpath):
     except Exception as _:
         pass
 
+def load_fmnist_data(datadir):
+    transform = transforms.Compose([transforms.ToTensor()])
 
+    fmnist_train_ds = Fashionmnist_truncated(datadir, train=True, download=True, transform=transform)
+    fmnist_test_ds = Fashionmnist_truncated(datadir, train=False, download=True, transform=transform)
+
+    X_train, y_train = fmnist_train_ds.data, fmnist_train_ds.target
+    X_test, y_test = fmnist_test_ds.data, fmnist_test_ds.target
+
+    # y_train = y_train.numpy()
+    # y_test = y_test.numpy()
+
+    return (X_train, y_train, X_test, y_test)
 
 def load_cifar10_data(datadir):
     transform = transforms.Compose([transforms.ToTensor()])
@@ -95,6 +108,8 @@ def partition_data(dataset, datadir, logdir, partition, n_parties, beta=0.4):
         X_train, y_train, X_test, y_test = load_cifar100_data(datadir)
     elif dataset == 'tinyimagenet':
         X_train, y_train, X_test, y_test = load_tinyimagenet_data(datadir)
+    elif dataset == 'fmnist':
+        X_train, y_train, X_test, y_test = load_fmnist_data(datadir)
 
     n_train = y_train.shape[0]
 
@@ -186,7 +201,7 @@ def compute_accuracy(model, dataloader, get_confusion_matrix=False, device="cpu"
     true_labels_list, pred_labels_list = np.array([]), np.array([])
 
     correct, total = 0, 0
-    if device == 'cpu':
+    if device.type == 'cpu':
         criterion = nn.CrossEntropyLoss()
     elif "cuda" in device.type:
         criterion = nn.CrossEntropyLoss().cuda()
@@ -221,7 +236,7 @@ def compute_accuracy(model, dataloader, get_confusion_matrix=False, device="cpu"
             for batch_idx, (x, target) in enumerate(dataloader):
                 #print("x:",x)
                 if device != 'cpu':
-                    x, target = x.cuda(), target.to(dtype=torch.int64).cuda()
+                    x, target = x.to(device), target.to(dtype=torch.int64).to(device)
                 _,_,out = model(x)
                 loss = criterion(out, target)
                 _, pred_label = torch.max(out.data, 1)
@@ -342,7 +357,6 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
                 normalize])
 
 
-
         train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
         test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
 
@@ -364,6 +378,31 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
         train_ds = dl_obj(datadir+'./train/', dataidxs=dataidxs, transform=transform_train)
         test_ds = dl_obj(datadir+'./val/', transform=transform_test)
 
+        train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, drop_last=True, shuffle=True)
+        test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False)
+
+
+    elif dataset == 'fmnist':
+
+        transform_train = transforms.Compose([
+            transforms.Resize((32, 32)),
+            transforms.ToTensor()
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.Resize((32, 32)),
+            transforms.ToTensor(),
+        ])
+
+        train_ds = datasets.FashionMNIST(root='./data',
+                                         train=True,
+                                         transform=transform_train,
+                                         download=True)
+
+        test_ds = datasets.FashionMNIST(root='./data',
+                                         train=False,
+                                         transform=transform_test,
+                                         download=True)
         train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, drop_last=True, shuffle=True)
         test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False)
 

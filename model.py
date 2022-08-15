@@ -144,32 +144,39 @@ class FCBlockVGG(nn.Module):
 
 
 class SimpleCNN_header(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim=10):
+    def __init__(self, in_channel=3, num_classes=10, conv_config=None, linear_config=None, use_batchnorm=False):
         super(SimpleCNN_header, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, 3)
-        self.relu = nn.ReLU()
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 64, 3)
-        self.conv3 = nn.Conv2d(64, 64, 3)
+        self.in_channel = in_channel
+        self.batch_norm = use_batchnorm
 
-        # for now, we hard coded this network
-        # i.e. we fix the number of hidden layers i.e. 2 layers
-        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        #self.fc3 = nn.Linear(hidden_dims[1], output_dim)
+        self.config = [32, 'M', 64, 'M', 64]
+
+        self.features = self._make_feature_layers()
+
+        self.classifier = nn.Sequential(
+            nn.Linear(4 * 4 * self.config[-1], 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 84)
+        )
+
+    def _make_feature_layers(self):
+        layers = []
+        in_channels = self.in_channel
+        for param in self.config:
+            if param == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2))
+            else:
+                layers.extend([nn.Conv2d(in_channels, param, kernel_size=3, padding=0),
+                               nn.ReLU(inplace=True)])
+                in_channels = param
+
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-
-        x = self.pool(self.relu(self.conv1(x)))
-        x = self.pool(self.relu(self.conv2(x)))
-        x = self.relu(self.conv3(x))
+        x = self.features(x)
         x = x.view(x.size(0), -1)
-
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        # x = self.fc3(x)
+        x = self.classifier(x)
         return x
-
 
 class SimpleCNN(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim=10):
@@ -218,52 +225,54 @@ class PerceptronModel(nn.Module):
 
 
 class SimpleCNNMNIST_header(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim=10):
-        super(SimpleCNNMNIST_header, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, 5)
-        self.relu = nn.ReLU()
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
+    def __init__(self, in_channel=3, num_classes=10, conv_config=None, linear_config=None, use_batchnorm=False):
+        super(SimpleCNNMNIST, self).__init__()
+        self.in_channel = in_channel
+        self.batch_norm = use_batchnorm
 
-        # for now, we hard coded this network
-        # i.e. we fix the number of hidden layers i.e. 2 layers
-        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        #self.fc3 = nn.Linear(hidden_dims[1], output_dim)
+        if conv_config is None:
+            self.config = [32, 'M', 64, 'M', 64]
+        else:
+            self.config = conv_config
+
+        self.features = self._make_feature_layers()
+        if linear_config is None:
+            self.classifier = nn.Sequential(
+                nn.Linear(4 * 4 * self.config[-1], 64),
+                nn.ReLU(inplace=True),
+                nn.Linear(64, num_classes)
+            )
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(4 * 4 * self.config[-1], linear_config[0]),
+                nn.ReLU(inplace=True),
+                nn.Linear(linear_config[0], num_classes)
+            )
+
+    def _make_feature_layers(self):
+        layers = []
+        in_channels = self.in_channel
+        for param in self.config:
+            if param == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2))
+            else:
+                layers.extend([nn.Conv2d(in_channels, param, kernel_size=3, padding=0),
+                               nn.ReLU(inplace=True)])
+                in_channels = param
+
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-
-        x = self.pool(self.relu(self.conv1(x)))
-        x = self.pool(self.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 4 * 4)
-
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        # x = self.fc3(x)
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
         return x
 
-class SimpleCNNMNIST(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim=10):
-        super(SimpleCNNMNIST, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
+class SimpleCNNMNIST_header(nn.Module):
+    def __init__(self):
+        super(SimpleCNNMNIST_header, self).__init__()
 
-        # for now, we hard coded this network
-        # i.e. we fix the number of hidden layers i.e. 2 layers
-        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
-        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
-        self.fc3 = nn.Linear(hidden_dims[1], output_dim)
 
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 4 * 4)
-
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        y = self.fc3(x)
-        return x, 0, y
 
 
 class SimpleCNNContainer(nn.Module):
@@ -279,6 +288,7 @@ class SimpleCNNContainer(nn.Module):
         i) we use only two conv layers and three hidden layers (including the output layer)
         ii) kernel size in the two conv layers are identical
         '''
+
         self.conv1 = nn.Conv2d(input_channel, num_filters[0], kernel_size)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(num_filters[0], num_filters[1], kernel_size)
@@ -301,21 +311,47 @@ class SimpleCNNContainer(nn.Module):
 
 ############## LeNet ###################
 class LeNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channel=3, num_classes=10, config=None, linear_config=None):
         super(LeNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5, 1)
-        self.conv2 = nn.Conv2d(6, 16, 5, 1)
-        self.relu = nn.ReLU()
-        self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(5 * 5 * 16, 120)
-        self.fc2 = nn.Linear(120, 84)
+        self.in_channel = in_channel
+        if config is None:
+            self.config = [6, "M", 16, "M"]
+        else:
+            self.config = config
+        self.features = self._make_feature_layers()
+        if linear_config is None:
+            self.classifier = nn.Sequential(
+                nn.Linear(16 * 5 * 5, 120),
+                nn.ReLU(inplace=True),
+                nn.Linear(120, 84),
+                nn.ReLU(inplace=True),
+                nn.Linear(84, num_classes)
+            )
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(self.config[2] * 5 * 5, linear_config[0]),
+                nn.ReLU(inplace=True),
+                nn.Linear(linear_config[0], linear_config[1]),
+                nn.ReLU(inplace=True),
+                nn.Linear(linear_config[1], num_classes)
+            )
+
+    def _make_feature_layers(self):
+        layers = []
+        in_channels = self.in_channel
+        for param in self.config:
+            if param == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2))
+            else:
+                layers.extend([nn.Conv2d(in_channels, param, kernel_size=5),
+                               nn.ReLU(inplace=True)])
+                in_channels = param
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.pool(self.relu(self.conv1(x)))
-        x = self.pool(self.relu(self.conv2(x)))
+        x = self.features(x)
         x = torch.flatten(x, 1)
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
+        x = self.classifier(x)
         return x
 
 
@@ -381,7 +417,8 @@ class VGG(nn.Module):
         return x
 
 
-# Moderate size of CNN for CIFAR-10 dataset
+
+### Moderate size of CNN for CIFAR-10 dataset
 class ModerateCNN(nn.Module):
     def __init__(self, output_dim=10):
         super(ModerateCNN, self).__init__()
@@ -573,32 +610,46 @@ class ModerateCNNContainer(nn.Module):
 
 class ModelFedCon(nn.Module):
 
-    def __init__(self, base_model, out_dim, n_classes, net_configs=None):
+    def __init__(self, dataset, base_model, out_dim, n_classes, net_configs=None):
         super(ModelFedCon, self).__init__()
 
-        if base_model == "resnet50-cifar10" or base_model == "resnet50-cifar100" or base_model == "resnet50-smallkernel" or base_model == "resnet50":
-            basemodel = ResNet50_cifar10()
-            self.features = nn.Sequential(*list(basemodel.children())[:-1])
-            num_ftrs = basemodel.fc.in_features
-        elif base_model == "resnet18-cifar10" or base_model == "resnet18":
-            basemodel = ResNet18_cifar10()
-            self.features = nn.Sequential(*list(basemodel.children())[:-1])
-            num_ftrs = basemodel.fc.in_features
-        elif base_model == "mlp":
-            self.features = MLP_header()
-            num_ftrs = 512
-        elif base_model == 'simple-cnn':
-            self.features = SimpleCNN_header(input_dim=(64 * 4 * 4), hidden_dims=[64, 84], output_dim=n_classes)
-            num_ftrs = 84
-        elif base_model == 'simple-cnn-mnist':
-            self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
-            num_ftrs = 84
-        elif base_model == 'lenet':
-            self.features = LeNet()
-            num_ftrs = 84
-        elif base_model == 'vgg':
-            self.features = VGG()
-            num_ftrs = 84
+        if dataset == 'fmnist':
+            if base_model == 'simple-cnn':
+                self.features = SimpleCNN_header(in_channel=1, num_classes=n_classes)
+                num_ftrs = 84
+            elif base_model == 'simple-cnn-mnist':
+                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
+                num_ftrs = 84
+            elif base_model == 'lenet':
+                self.features = LeNet(in_channel=1, num_classes=84)
+                num_ftrs = 84
+            elif base_model == 'vgg':
+                self.features = VGG(in_channel=1)
+                num_ftrs = 84
+        else :
+            if base_model == "resnet50-cifar10" or base_model == "resnet50-cifar100" or base_model == "resnet50-smallkernel" or base_model == "resnet50":
+                basemodel = ResNet50_cifar10()
+                self.features = nn.Sequential(*list(basemodel.children())[:-1])
+                num_ftrs = basemodel.fc.in_features
+            elif base_model == "resnet18-cifar10" or base_model == "resnet18":
+                basemodel = ResNet18_cifar10()
+                self.features = nn.Sequential(*list(basemodel.children())[:-1])
+                num_ftrs = basemodel.fc.in_features
+            elif base_model == "mlp":
+                self.features = MLP_header()
+                num_ftrs = 512
+            elif base_model == 'simple-cnn':
+                self.features = SimpleCNN_header(input_dim=(16 * 5 * 5), hidden_dims=[120, 84], output_dim=n_classes)
+                num_ftrs = 84
+            elif base_model == 'simple-cnn-mnist':
+                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
+                num_ftrs = 84
+            elif base_model == 'lenet':
+                self.features = LeNet()
+                num_ftrs = 84
+            elif base_model == 'vgg':
+                self.features = VGG()
+                num_ftrs = 84
 
         #summary(self.features.to('cuda:0'), (3,32,32))
         #print("features:", self.features)
@@ -619,10 +670,7 @@ class ModelFedCon(nn.Module):
 
     def forward(self, x):
         h = self.features(x)
-        #print("h before:", h)
-        #print("h size:", h.size())
         h = h.squeeze()
-        #print("h after:", h)
         x = self.l1(h)
         x = F.relu(x)
         x = self.l2(x)
