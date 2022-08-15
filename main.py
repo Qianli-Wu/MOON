@@ -246,7 +246,7 @@ def train_net_fedprox(net_id, net, global_net, train_dataloader, test_dataloader
 def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, test_dataloader, epochs, lr, args_optimizer, mu, temperature, args,
                       round, device="cpu"):
     net = nn.DataParallel(net)
-    net.cuda()
+    net.to(device)
     logger.info('Training network %s' % str(net_id))
     logger.info('n_training: %d' % len(train_dataloader))
     logger.info('n_test: %d' % len(test_dataloader))
@@ -344,7 +344,7 @@ def local_train_net(nets, args, net_dataidx_map, train_dl=None, test_dl=None, gl
     avg_acc = 0.0
     acc_list = []
     if global_model:
-        global_model.cuda()
+        global_model.to(device)
     if server_c:
         server_c.cuda()
         server_c_collector = list(server_c.cuda().parameters())
