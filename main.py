@@ -9,7 +9,7 @@ import os
 import copy
 import datetime
 import random
-
+from model import SimpleCNNMNIST
 
 from model import *
 from utils import *
@@ -18,15 +18,14 @@ from utils import *
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='simple-cnn', help='neural network used in training')
-    parser.add_argument('--dataset', type=str, default='cifar10', help='dataset used for training')
+    parser.add_argument('--dataset', type=str, default='fmnist', help='dataset used for training')
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='noniid', help='the data partitioning strategy')
-    parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training (default: 64)')
+    parser.add_argument('--batch-size', type=int, default=10, help='input batch size for training (default: 64)')
     parser.add_argument('--lr', type=float, default=0.1, help='learning rate (default: 0.1)')
     parser.add_argument('--epochs', type=int, default=5, help='number of local epochs')
     parser.add_argument('--n_parties', type=int, default=100, help='number of workers in a distributed cluster')
-    parser.add_argument('--alg', type=str, default='moon',
-                        help='communication strategy: fedavg/fedprox')
+    parser.add_argument('--alg', type=str, default='moon', help='communication strategy: fedavg/fedprox')
     parser.add_argument('--comm_round', type=int, default=500, help='number of maximum communication roun')
     parser.add_argument('--init_seed', type=int, default=777, help="Random seed")
     parser.add_argument('--dropout_p', type=float, required=False, default=0.0, help="Dropout probability. Default=0.0")
@@ -34,8 +33,7 @@ def get_args():
     parser.add_argument('--reg', type=float, default=1e-5, help="L2 regularization strength")
     parser.add_argument('--logdir', type=str, required=False, default="./logs/", help='Log directory path')
     parser.add_argument('--modeldir', type=str, required=False, default="./models/", help='Model directory path')
-    parser.add_argument('--beta', type=float, default=0.5,
-                        help='The parameter for the dirichlet distribution for data partitioning')
+    parser.add_argument('--beta', type=float, default=0.5, help='The parameter for the dirichlet distribution for data partitioning')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to run the program')
     parser.add_argument('--log_file_name', type=str, default=None, help='The log file name')
     parser.add_argument('--optimizer', type=str, default='sgd', help='the optimizer')
@@ -52,7 +50,7 @@ def get_args():
     parser.add_argument('--load_first_net', type=int, default=1, help='whether load the first net as old net or not')
     parser.add_argument('--normal_model', type=int, default=0, help='use normal model or aggregate model')
     parser.add_argument('--loss', type=str, default='contrastive')
-    parser.add_argument('--save_model',type=int,default=0)
+    parser.add_argument('--save_model', type=int, default=0)
     parser.add_argument('--use_project_head', type=int, default=1)
     parser.add_argument('--server_momentum', type=float, default=0, help='the server momentum (FedAvgM)')
     args = parser.parse_args()
@@ -85,11 +83,11 @@ def init_nets(net_configs, n_parties, args, device='cpu'):
                 net = net.cuda()
             nets[net_i] = net
     else:
-        for net_i in range(n_parties):  #10
+        for net_i in range(n_parties):
             if args.use_project_head:
-                net = ModelFedCon(args.model, args.out_dim, n_classes, net_configs)
+                net = ModelFedCon(args.dataset, args.model, args.out_dim, n_classes, net_configs)
             else:
-                net = ModelFedCon_noheader(args.model, args.out_dim, n_classes, net_configs)
+                net = ModelFedCon_noheader(args.dataset, args.model, args.out_dim, n_classes, net_configs)
             if device == 'cpu':
                 net.to(device)
             else:
@@ -106,7 +104,7 @@ def init_nets(net_configs, n_parties, args, device='cpu'):
 
 
 def train_net(net_id, net, train_dataloader, test_dataloader, epochs, lr, args_optimizer, args, device="cpu"):
-    net = nn.DataParallel(net)
+    # net = nn.DataParallel(net)
     net.cuda()
     logger.info('Training network %s' % str(net_id))
     logger.info('n_training: %d' % len(train_dataloader))
@@ -174,7 +172,7 @@ def train_net(net_id, net, train_dataloader, test_dataloader, epochs, lr, args_o
 def train_net_fedprox(net_id, net, global_net, train_dataloader, test_dataloader, epochs, lr, args_optimizer, mu, args,
                       device="cpu"):
     # global_net.to(device)
-    net = nn.DataParallel(net)
+    # net = nn.DataParallel(net)
     net.cuda()
     # else:
     #     net.to(device)
@@ -245,8 +243,8 @@ def train_net_fedprox(net_id, net, global_net, train_dataloader, test_dataloader
 
 def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, test_dataloader, epochs, lr, args_optimizer, mu, temperature, args,
                       round, device="cpu"):
-    net = nn.DataParallel(net)
-    net.to(device)
+    # net = nn.DataParallel(net)
+    net.cuda()
     logger.info('Training network %s' % str(net_id))
     logger.info('n_training: %d' % len(train_dataloader))
     logger.info('n_test: %d' % len(test_dataloader))
@@ -254,10 +252,9 @@ def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, t
     train_acc, _ = compute_accuracy(net, train_dataloader, device=device)
 
     test_acc, conf_matrix, _ = compute_accuracy(net, test_dataloader, get_confusion_matrix=True, device=device)
-
+    
     logger.info('>> Pre-Training Training accuracy: {}'.format(train_acc))
     logger.info('>> Pre-Training Test accuracy: {}'.format(test_acc))
-
 
     if args_optimizer == 'adam':
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=args.reg)
@@ -278,7 +275,7 @@ def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, t
     cnt = 0
     cos=torch.nn.CosineSimilarity(dim=-1)
     # mu = 0.001
-
+    '''
     for epoch in range(epochs):
         epoch_loss_collector = []
         epoch_loss1_collector = []
@@ -296,7 +293,7 @@ def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, t
 
             posi = cos(pro1, pro2)
             logits = posi.reshape(-1,1)
-
+            
             for previous_net in previous_nets:
                 previous_net.cuda()
                 _, pro3, _ = previous_net(x)
@@ -304,12 +301,11 @@ def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, t
                 logits = torch.cat((logits, nega.reshape(-1,1)), dim=1)
 
                 previous_net.to('cpu')
-
+            
             logits /= temperature
             labels = torch.zeros(x.size(0)).cuda().long()
 
             loss2 = mu * criterion(logits, labels)
-
 
             loss1 = criterion(out, target)
             loss = loss1 + loss2
@@ -327,7 +323,7 @@ def train_net_fedcon(net_id, net, global_net, previous_nets, train_dataloader, t
         epoch_loss2 = sum(epoch_loss2_collector) / len(epoch_loss2_collector)
         logger.info('Epoch: %d Loss: %f Loss1: %f Loss2: %f' % (epoch, epoch_loss, epoch_loss1, epoch_loss2))
 
-
+    '''
     for previous_net in previous_nets:
         previous_net.to('cpu')
     train_acc, _ = compute_accuracy(net, train_dataloader, device=device)
@@ -344,7 +340,7 @@ def local_train_net(nets, args, net_dataidx_map, train_dl=None, test_dl=None, gl
     avg_acc = 0.0
     acc_list = []
     if global_model:
-        global_model.to(device)
+        global_model.cuda()
     if server_c:
         server_c.cuda()
         server_c_collector = list(server_c.cuda().parameters())
@@ -367,8 +363,8 @@ def local_train_net(nets, args, net_dataidx_map, train_dl=None, test_dl=None, gl
             prev_models=[]
             for i in range(len(prev_model_pool)):
                 prev_models.append(prev_model_pool[i][net_id])
-            trainacc, testacc = train_net_fedcon(net_id, net, global_model, prev_models, train_dl_local, test_dl, n_epoch, args.lr,
-                                                  args.optimizer, args.mu, args.temperature, args, round, device=device)
+            trainacc, testacc = train_net_fedcon(net_id, net, global_model, prev_models, train_dl_local, test_dl, n_epoch, args.lr,  args.optimizer, args.mu, args.temperature, args, round, device=device)
+            #  trainacc, testacc = (0.1, 0.1)
 
         elif args.alg == 'local_training':
             trainacc, testacc = train_net(net_id, net, train_dl_local, test_dl, n_epoch, args.lr, args.optimizer, args,
@@ -670,4 +666,3 @@ if __name__ == '__main__':
         mkdirs(args.modeldir + 'all_in/')
 
         torch.save(nets[0].state_dict(), args.modeldir+'all_in/'+args.log_file_name+ '.pth')
-

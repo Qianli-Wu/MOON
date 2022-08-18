@@ -224,7 +224,7 @@ class PerceptronModel(nn.Module):
         return x
 
 
-class SimpleCNNMNIST_header(nn.Module):
+class SimpleCNNMNIST(nn.Module):
     def __init__(self, in_channel=3, num_classes=10, conv_config=None, linear_config=None, use_batchnorm=False):
         super(SimpleCNNMNIST, self).__init__()
         self.in_channel = in_channel
@@ -639,7 +639,7 @@ class ModelFedCon(nn.Module):
                 self.features = MLP_header()
                 num_ftrs = 512
             elif base_model == 'simple-cnn':
-                self.features = SimpleCNN_header(input_dim=(16 * 5 * 5), hidden_dims=[120, 84], output_dim=n_classes)
+                self.features = SimpleCNN_header(in_channel=3, num_classes=n_classes)
                 num_ftrs = 84
             elif base_model == 'simple-cnn-mnist':
                 self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
