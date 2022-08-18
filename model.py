@@ -5,20 +5,21 @@ import math
 import torchvision.models as models
 from resnetcifar import ResNet18_cifar10, ResNet50_cifar10
 
-#import pytorch_lightning as pl
+
+# import pytorch_lightning as pl
 
 
 class MLP_header(nn.Module):
-    def __init__(self,):
+    def __init__(self, ):
         super(MLP_header, self).__init__()
-        self.fc1 = nn.Linear(28*28, 512)
+        self.fc1 = nn.Linear(28 * 28, 512)
         self.fc2 = nn.Linear(512, 512)
         self.relu = nn.ReLU()
-        #projection
+        # projection
         # self.fc3 = nn.Linear(512, 10)
 
     def forward(self, x):
-        x = x.view(-1, 28*28)
+        x = x.view(-1, 28 * 28)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
@@ -178,6 +179,7 @@ class SimpleCNN_header(nn.Module):
         x = self.classifier(x)
         return x
 
+
 class SimpleCNN(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim=10):
         super(SimpleCNN, self).__init__()
@@ -193,13 +195,13 @@ class SimpleCNN(nn.Module):
         self.fc3 = nn.Linear(hidden_dims[1], output_dim)
 
     def forward(self, x):
-        #out = self.conv1(x)
-        #out = self.relu(out)
-        #out = self.pool(out)
-        #out = self.conv2(out)
-        #out = self.relu(out)
-        #out = self.pool(out)
-        #out = out.view(-1, 16 * 5 * 5)
+        # out = self.conv1(x)
+        # out = self.relu(out)
+        # out = self.pool(out)
+        # out = self.conv2(out)
+        # out = self.relu(out)
+        # out = self.pool(out)
+        # out = out.view(-1, 16 * 5 * 5)
 
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
@@ -219,12 +221,11 @@ class PerceptronModel(nn.Module):
         self.fc1 = nn.Linear(input_dim, output_dim)
 
     def forward(self, x):
-
         x = self.fc1(x)
         return x
 
 
-class SimpleCNNMNIST_header(nn.Module):
+class SimpleCNNMNIST(nn.Module):
     def __init__(self, in_channel=3, num_classes=10, conv_config=None, linear_config=None, use_batchnorm=False):
         super(SimpleCNNMNIST, self).__init__()
         self.in_channel = in_channel
@@ -268,11 +269,10 @@ class SimpleCNNMNIST_header(nn.Module):
         x = self.classifier(x)
         return x
 
+
 class SimpleCNNMNIST_header(nn.Module):
     def __init__(self):
         super(SimpleCNNMNIST_header, self).__init__()
-
-
 
 
 class SimpleCNNContainer(nn.Module):
@@ -309,7 +309,7 @@ class SimpleCNNContainer(nn.Module):
         return x
 
 
-############## LeNet ###################
+# LeNet
 class LeNet(nn.Module):
     def __init__(self, in_channel=3, num_classes=10, config=None, linear_config=None):
         super(LeNet, self).__init__()
@@ -377,7 +377,7 @@ class LeNetContainer(nn.Module):
         return x
 
 
-############## VGG ####################
+# VGG
 class VGG(nn.Module):
     def __init__(self, in_channel=3, num_ftrs=84, config=None):
         super(VGG, self).__init__()
@@ -417,8 +417,7 @@ class VGG(nn.Module):
         return x
 
 
-
-### Moderate size of CNN for CIFAR-10 dataset
+# Moderate size of CNN for CIFAR-10 dataset
 class ModerateCNN(nn.Module):
     def __init__(self, output_dim=10):
         super(ModerateCNN, self).__init__()
@@ -465,7 +464,7 @@ class ModerateCNN(nn.Module):
         return x
 
 
-### Moderate size of CNN for CIFAR-10 dataset
+# Moderate size of CNN for CIFAR-10 dataset
 class ModerateCNNCeleba(nn.Module):
     def __init__(self):
         super(ModerateCNNCeleba, self).__init__()
@@ -614,16 +613,20 @@ class ModelFedCon(nn.Module):
         super(ModelFedCon, self).__init__()
 
         if dataset == 'fmnist':
-            num_ftrs = 84
             if base_model == 'simple-cnn':
                 self.features = SimpleCNN_header(in_channel=1, num_classes=n_classes)
+                num_ftrs = 84
             elif base_model == 'simple-cnn-mnist':
-                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
+                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84],
+                                                      output_dim=n_classes)
+                num_ftrs = 84
             elif base_model == 'lenet':
                 self.features = LeNet(in_channel=1, num_classes=84)
+                num_ftrs = 84
             elif base_model == 'vgg':
                 self.features = VGG(in_channel=1)
-        else :
+                num_ftrs = 84
+        else:
             if base_model == "resnet50-cifar10" or base_model == "resnet50-cifar100" or base_model == "resnet50-smallkernel" or base_model == "resnet50":
                 basemodel = ResNet50_cifar10()
                 self.features = nn.Sequential(*list(basemodel.children())[:-1])
@@ -636,10 +639,12 @@ class ModelFedCon(nn.Module):
                 self.features = MLP_header()
                 num_ftrs = 512
             elif base_model == 'simple-cnn':
-                self.features = SimpleCNN_header(input_dim=(16 * 5 * 5), hidden_dims=[120, 84], output_dim=n_classes)
+                # self.features = SimpleCNN_header(input_dim=(16 * 5 * 5), hidden_dims=[120, 84], output_dim=n_classes)
+                self.features = SimpleCNN_header(in_channel=3, num_classes=n_classes)
                 num_ftrs = 84
             elif base_model == 'simple-cnn-mnist':
-                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
+                self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84],
+                                                      output_dim=n_classes)
                 num_ftrs = 84
             elif base_model == 'lenet':
                 self.features = LeNet()
@@ -648,8 +653,8 @@ class ModelFedCon(nn.Module):
                 self.features = VGG()
                 num_ftrs = 84
 
-        #summary(self.features.to('cuda:0'), (3,32,32))
-        #print("features:", self.features)
+        # summary(self.features.to('cuda:0'), (3,32,32))
+        # print("features:", self.features)
         # projection MLP
         self.l1 = nn.Linear(num_ftrs, num_ftrs)
         self.l2 = nn.Linear(num_ftrs, out_dim)
@@ -660,7 +665,7 @@ class ModelFedCon(nn.Module):
     def _get_basemodel(self, model_name):
         try:
             model = self.model_dict[model_name]
-            #print("Feature extractor:", model_name)
+            # print("Feature extractor:", model_name)
             return model
         except:
             raise ("Invalid model name. Check the config file and pass one of: resnet18 or resnet50")
@@ -707,8 +712,8 @@ class ModelFedCon_noheader(nn.Module):
             self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
             num_ftrs = 84
 
-        #summary(self.features.to('cuda:0'), (3,32,32))
-        #print("features:", self.features)
+        # summary(self.features.to('cuda:0'), (3,32,32))
+        # print("features:", self.features)
         # projection MLP
         # self.l1 = nn.Linear(num_ftrs, num_ftrs)
         # self.l2 = nn.Linear(num_ftrs, out_dim)
@@ -719,21 +724,20 @@ class ModelFedCon_noheader(nn.Module):
     def _get_basemodel(self, model_name):
         try:
             model = self.model_dict[model_name]
-            #print("Feature extractor:", model_name)
+            # print("Feature extractor:", model_name)
             return model
         except:
             raise ("Invalid model name. Check the config file and pass one of: resnet18 or resnet50")
 
     def forward(self, x):
         h = self.features(x)
-        #print("h before:", h)
-        #print("h size:", h.size())
+        # print("h before:", h)
+        # print("h size:", h.size())
         h = h.squeeze()
-        #print("h after:", h)
+        # print("h after:", h)
         # x = self.l1(h)
         # x = F.relu(x)
         # x = self.l2(x)
 
         y = self.l3(h)
         return h, h, y
-

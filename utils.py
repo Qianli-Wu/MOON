@@ -25,6 +25,7 @@ def mkdirs(dirpath):
     except Exception as _:
         pass
 
+
 def load_fmnist_data(datadir):
     transform = transforms.Compose([transforms.ToTensor()])
 
@@ -38,6 +39,7 @@ def load_fmnist_data(datadir):
     # y_test = y_test.numpy()
 
     return (X_train, y_train, X_test, y_test)
+
 
 def load_cifar10_data(datadir):
     transform = transforms.Compose([transforms.ToTensor()])
@@ -71,10 +73,11 @@ def load_cifar100_data(datadir):
 
 def load_tinyimagenet_data(datadir):
     transform = transforms.Compose([transforms.ToTensor()])
-    xray_train_ds = ImageFolder_custom(datadir+'./train/', transform=transform)
-    xray_test_ds = ImageFolder_custom(datadir+'./val/', transform=transform)
+    xray_train_ds = ImageFolder_custom(datadir + './train/', transform=transform)
+    xray_test_ds = ImageFolder_custom(datadir + './val/', transform=transform)
 
-    X_train, y_train = np.array([s[0] for s in xray_train_ds.samples]), np.array([int(s[1]) for s in xray_train_ds.samples])
+    X_train, y_train = np.array([s[0] for s in xray_train_ds.samples]), np.array(
+        [int(s[1]) for s in xray_train_ds.samples])
     X_test, y_test = np.array([s[0] for s in xray_test_ds.samples]), np.array([int(s[1]) for s in xray_test_ds.samples])
 
     return (X_train, y_train, X_test, y_test)
@@ -88,9 +91,9 @@ def record_net_data_stats(y_train, net_dataidx_map, logdir):
         tmp = {unq[i]: unq_cnt[i] for i in range(len(unq))}
         net_cls_counts[net_i] = tmp
 
-    data_list=[]
+    data_list = []
     for net_id, data in net_cls_counts.items():
-        n_total=0
+        n_total = 0
         for class_id, n_data in data.items():
             n_total += n_data
         data_list.append(n_total)
@@ -117,7 +120,6 @@ def partition_data(dataset, datadir, logdir, partition, n_parties, beta=0.4):
         idxs = np.random.permutation(n_train)
         batch_idxs = np.array_split(idxs, n_parties)
         net_dataidx_map = {i: batch_idxs[i] for i in range(n_parties)}
-
 
     elif partition == "noniid-labeldir" or partition == "noniid":
         np.random.seed(749)
@@ -163,7 +165,7 @@ def get_trainable_parameters(net, device='cpu'):
     trainable = filter(lambda p: p.requires_grad, net.parameters())
     # print("net.parameter.data:", list(net.parameters()))
     paramlist = list(trainable)
-    #print("paramlist:", paramlist)
+    # print("paramlist:", paramlist)
     N = 0
     for params in paramlist:
         N += params.numel()
@@ -210,12 +212,12 @@ def compute_accuracy(model, dataloader, get_confusion_matrix=False, device="cpu"
         for loader in dataloader:
             with torch.no_grad():
                 for batch_idx, (x, target) in enumerate(loader):
-                    #print("x:",x)
-                    #print("target:",target)
+                    # print("x:",x)
+                    # print("target:",target)
                     if device != 'cpu':
                         x, target = x.cuda(), target.to(dtype=torch.int64).cuda()
                     _, _, out = model(x)
-                    if len(target)==1:
+                    if len(target) == 1:
                         loss = criterion(out, target)
                     else:
                         loss = criterion(out, target)
@@ -234,10 +236,10 @@ def compute_accuracy(model, dataloader, get_confusion_matrix=False, device="cpu"
     else:
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(dataloader):
-                #print("x:",x)
+                # print("x:",x)
                 if device != 'cpu':
                     x, target = x.to(device), target.to(dtype=torch.int64).to(device)
-                _,_,out = model(x)
+                _, _, out = model(x)
                 loss = criterion(out, target)
                 _, pred_label = torch.max(out.data, 1)
                 loss_collector.append(loss.item())
@@ -263,6 +265,7 @@ def compute_accuracy(model, dataloader, get_confusion_matrix=False, device="cpu"
 
     return correct / float(total), avg_loss
 
+
 def compute_loss(model, dataloader, device="cpu"):
     was_training = False
     if model.training:
@@ -277,7 +280,7 @@ def compute_loss(model, dataloader, device="cpu"):
         for batch_idx, (x, target) in enumerate(dataloader):
             if device != 'cpu':
                 x, target = x.cuda(), target.to(dtype=torch.int64).cuda()
-            _,_,out = model(x)
+            _, _, out = model(x)
             loss = criterion(out, target)
             loss_collector.append(loss.item())
 
@@ -287,7 +290,6 @@ def compute_loss(model, dataloader, device="cpu"):
         model.train()
 
     return avg_loss
-
 
 
 def save_model(model, model_index, args):
@@ -356,13 +358,11 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
                 transforms.ToTensor(),
                 normalize])
 
-
         train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
         test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
 
         train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, drop_last=True, shuffle=True)
         test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False)
-
 
     elif dataset == 'tinyimagenet':
         dl_obj = ImageFolder_custom
@@ -375,12 +375,11 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ])
 
-        train_ds = dl_obj(datadir+'./train/', dataidxs=dataidxs, transform=transform_train)
-        test_ds = dl_obj(datadir+'./val/', transform=transform_test)
+        train_ds = dl_obj(datadir + './train/', dataidxs=dataidxs, transform=transform_train)
+        test_ds = dl_obj(datadir + './val/', transform=transform_test)
 
         train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, drop_last=True, shuffle=True)
         test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False)
-
 
     elif dataset == 'fmnist':
         dl_obj = Fashionmnist_truncated
@@ -394,17 +393,20 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
             transforms.ToTensor(),
         ])
 
-        train_ds = datasets.FashionMNIST(root='./data',
-                                         train=True,
-                                         transform=transform_train,
-                                         download=True)
+        train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
+        test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
 
-        test_ds = datasets.FashionMNIST(root='./data',
-                                         train=False,
-                                         transform=transform_test,
-                                         download=True)
+        # train_ds = datasets.FashionMNIST(root='./data',
+        #                                  train=True,
+        #                                  transform=transform_train,
+        #                                  download=True)
+        #
+        # test_ds = datasets.FashionMNIST(root='./data',
+        #                                 train=False,
+        #                                 transform=transform_test,
+        #                                 download=True)
+
         train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, drop_last=True, shuffle=True)
         test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False)
-
 
     return train_dl, test_dl, train_ds, test_ds

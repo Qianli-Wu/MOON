@@ -3,6 +3,7 @@ from PIL import Image
 import numpy as np
 import torchvision
 from torchvision.datasets import MNIST, EMNIST, CIFAR10, CIFAR100, SVHN, FashionMNIST, ImageFolder, DatasetFolder, utils
+import torchvision.transforms as transforms
 
 import os
 import os.path
@@ -20,6 +21,7 @@ def mkdirs(dirpath):
         os.makedirs(dirpath)
     except Exception as _:
         pass
+
 
 class Fashionmnist_truncated(data.Dataset):
 
@@ -82,6 +84,7 @@ class Fashionmnist_truncated(data.Dataset):
 
     def __len__(self):
         return len(self.data)
+
 
 class CIFAR10_truncated(data.Dataset):
 
@@ -201,8 +204,6 @@ class CIFAR100_truncated(data.Dataset):
 
     def __len__(self):
         return len(self.data)
-
-
 
 
 class ImageFolder_custom(DatasetFolder):
