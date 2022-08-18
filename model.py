@@ -614,18 +614,15 @@ class ModelFedCon(nn.Module):
         super(ModelFedCon, self).__init__()
 
         if dataset == 'fmnist':
+            num_ftrs = 84
             if base_model == 'simple-cnn':
                 self.features = SimpleCNN_header(in_channel=1, num_classes=n_classes)
-                num_ftrs = 84
             elif base_model == 'simple-cnn-mnist':
                 self.features = SimpleCNNMNIST_header(input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=n_classes)
-                num_ftrs = 84
             elif base_model == 'lenet':
                 self.features = LeNet(in_channel=1, num_classes=84)
-                num_ftrs = 84
             elif base_model == 'vgg':
                 self.features = VGG(in_channel=1)
-                num_ftrs = 84
         else :
             if base_model == "resnet50-cifar10" or base_model == "resnet50-cifar100" or base_model == "resnet50-smallkernel" or base_model == "resnet50":
                 basemodel = ResNet50_cifar10()

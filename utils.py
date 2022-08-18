@@ -383,7 +383,7 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
 
 
     elif dataset == 'fmnist':
-
+        dl_obj = Fashionmnist_truncated
         transform_train = transforms.Compose([
             transforms.Resize((32, 32)),
             transforms.ToTensor()
