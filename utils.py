@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix
 from torchvision import datasets
 
 from model import *
-from datasets import CIFAR10_truncated, CIFAR100_truncated, ImageFolder_custom
+from datasets import CIFAR10_truncated, CIFAR100_truncated, ImageFolder_custom, Fashionmnist_truncated
 
 logging.basicConfig()
 logger = logging.getLogger()
